@@ -1,0 +1,42 @@
+@startuml "User Service Components"
+
+!include ../C4-lib/C4_Component.puml
+
+scale max 1200 width
+skinparam dpi 100
+
+title "Диаграмма компонентов микросервиса 'Сервис пользователей'"
+
+Container_Boundary(user_service, "Сервис пользователей") {
+    Component(api_component, "API компонент", "gRPC, REST", "Предоставляет API для управления пользователями")
+    Component(auth_manager, "Менеджер аутентификации", "Go", "Обрабатывает аутентификацию пользователей")
+    Component(user_manager, "Менеджер пользователей", "Go", "Управляет учетными записями пользователей")
+    Component(permission_manager, "Менеджер прав доступа", "Go", "Управляет разрешениями и ролями")
+    Component(token_service, "Сервис токенов", "JWT", "Создание и проверка токенов доступа")
+    Component(event_publisher, "Издатель событий", "Kafka", "Публикует события пользователей")
+}
+
+Container_Ext(api_gateway, "API Gateway", "Nginx, Kong", "Маршрутизация запросов")
+Container_Ext(device_service, "Сервис управления устройствами", "Go", "Проверяет права доступа к устройствам")
+Container_Ext(heating_service, "Сервис отопления", "Go", "Проверяет права доступа")
+Container_Ext(lighting_service, "Сервис освещения", "Go", "Проверяет права доступа")
+Container_Ext(security_service, "Сервис безопасности", "Go", "Проверяет права доступа")
+Container_Ext(message_broker, "Брокер сообщений", "Kafka", "Обмен сообщениями")
+ContainerDb_Ext(user_db, "База пользователей", "PostgreSQL", "Хранение данных о пользователях")
+
+Rel(api_gateway, api_component, "Перенаправляет запросы", "gRPC/REST")
+Rel(device_service, api_component, "Запрашивает авторизацию", "gRPC")
+Rel(heating_service, api_component, "Запрашивает авторизацию", "gRPC")
+Rel(lighting_service, api_component, "Запрашивает авторизацию", "gRPC")
+Rel(security_service, api_component, "Запрашивает авторизацию", "gRPC")
+Rel(user_manager, user_db, "Читает/пишет", "SQL")
+Rel(event_publisher, message_broker, "Публикует события", "Kafka")
+
+Rel(api_component, auth_manager, "Вызывает", "Внутренний")
+Rel(api_component, user_manager, "Вызывает", "Внутренний")
+Rel(auth_manager, token_service, "Использует", "Внутренний")
+Rel(auth_manager, permission_manager, "Проверяет права", "Внутренний")
+Rel(user_manager, permission_manager, "Управляет правами", "Внутренний")
+Rel(user_manager, event_publisher, "Генерирует события", "Внутренний")
+
+@enduml 

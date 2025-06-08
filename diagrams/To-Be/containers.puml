@@ -1,0 +1,81 @@
+@startuml "Теплый дом - Containers"
+
+!include ../C4-lib/C4_Container.puml
+
+scale max 1600 width
+skinparam dpi 100
+
+title "Диаграмма контейнеров системы 'Умный дом' - To-Be"
+
+Person(user, "Пользователь", "Пользователь системы, который хочет управлять умным домом")
+Person(technician, "Технический специалист", "Устанавливает и настраивает оборудование")
+
+System_Boundary(smart_home_system, "Система 'Умный дом'") {
+    Container(api_gateway, "API Gateway", "Nginx, Kong", "Единая точка входа, маршрутизация запросов, авторизация")
+    
+    Container(frontend, "Пользовательский интерфейс", "React", "Веб и мобильные приложения для управления умным домом")
+    
+    Container(device_mgmt_service, "Сервис управления устройствами", "Go", "Регистрация и инвентаризация устройств")
+    Container(heating_service, "Сервис отопления", "Go", "Управление системами отопления")
+    Container(lighting_service, "Сервис освещения", "Go", "Управление системами освещения")
+    Container(security_service, "Сервис безопасности", "Go", "Управление системами безопасности")
+    Container(integration_service, "Сервис интеграций", "Go", "Интеграция со сторонними устройствами")
+    
+    Container(user_service, "Сервис пользователей", "Go", "Управление учетными записями, аутентификация, авторизация")
+    
+    Container(telemetry_service, "Сервис телеметрии", "Go", "Сбор, обработка и хранение данных с устройств")
+    Container(analytics_service, "Сервис аналитики", "Python", "Анализ данных, генерация отчетов")
+    
+    Container(subscription_service, "Сервис подписок", "Go", "Управление подписками и биллингом")
+    
+    Container(notification_service, "Сервис уведомлений", "Node.js", "Отправка уведомлений пользователям")
+    
+    ContainerDb(user_db, "База пользователей", "PostgreSQL", "Хранение данных о пользователях")
+    ContainerDb(device_db, "База устройств", "PostgreSQL", "Хранение данных об устройствах")
+    ContainerDb(telemetry_db, "База телеметрии", "TimescaleDB", "Хранение исторических данных с устройств")
+    ContainerDb(subscription_db, "База подписок", "PostgreSQL", "Хранение данных о подписках и платежах")
+    
+    Container(message_broker, "Брокер сообщений", "Kafka", "Асинхронный обмен сообщениями между сервисами")
+    Container(monitoring, "Мониторинг", "Prometheus, Grafana", "Мониторинг и алертинг")
+}
+
+System_Ext(smart_devices, "Умные устройства", "Датчики температуры, устройства отопления, освещения, безопасности")
+System_Ext(payment_gateway, "Платежный шлюз", "Обработка платежей")
+
+Rel(user, frontend, "Использует", "HTTPS")
+Rel(frontend, api_gateway, "Отправляет запросы", "HTTPS")
+Rel(technician, device_mgmt_service, "Настраивает через", "API")
+
+Rel(api_gateway, user_service, "Маршрутизирует запросы", "HTTPS/gRPC")
+Rel(api_gateway, device_mgmt_service, "Маршрутизирует запросы", "HTTPS/gRPC")
+Rel(api_gateway, heating_service, "Маршрутизирует запросы", "HTTPS/gRPC")
+Rel(api_gateway, lighting_service, "Маршрутизирует запросы", "HTTPS/gRPC")
+Rel(api_gateway, security_service, "Маршрутизирует запросы", "HTTPS/gRPC")
+Rel(api_gateway, telemetry_service, "Маршрутизирует запросы", "HTTPS/gRPC")
+Rel(api_gateway, analytics_service, "Маршрутизирует запросы", "HTTPS/gRPC")
+Rel(api_gateway, subscription_service, "Маршрутизирует запросы", "HTTPS/gRPC")
+
+Rel(user_service, user_db, "Читает/пишет", "SQL")
+Rel(device_mgmt_service, device_db, "Читает/пишет", "SQL")
+Rel(telemetry_service, telemetry_db, "Читает/пишет", "SQL")
+Rel(subscription_service, subscription_db, "Читает/пишет", "SQL")
+
+Rel(heating_service, smart_devices, "Управляет", "MQTT")
+Rel(lighting_service, smart_devices, "Управляет", "MQTT")
+Rel(security_service, smart_devices, "Управляет", "MQTT")
+Rel(integration_service, smart_devices, "Интегрируется", "MQTT/HTTP")
+Rel(smart_devices, telemetry_service, "Отправляет данные", "MQTT")
+
+Rel_U(telemetry_service, message_broker, "Публикует события", "Kafka")
+Rel_D(message_broker, analytics_service, "Доставляет данные", "Kafka")
+Rel_D(message_broker, notification_service, "Доставляет события", "Kafka")
+
+Rel(notification_service, user, "Отправляет уведомления", "WebSockets/Push")
+
+Rel_R(analytics_service, telemetry_service, "Запрашивает данные", "REST API")
+
+Rel(subscription_service, payment_gateway, "Обрабатывает платежи", "HTTPS")
+
+Rel_D(monitoring, smart_home_system, "Мониторит все сервисы", "HTTP")
+
+@enduml 

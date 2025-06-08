@@ -1,0 +1,317 @@
+asyncapi: 2.5.0
+info:
+  title: Умный дом - Система событий
+  version: 1.0.0
+  description: Спецификация событийного API системы "Умный дом"
+
+servers:
+  development:
+    url: kafka://localhost:9092
+    protocol: kafka
+    description: Сервер разработки
+  staging:
+    url: kafka://staging-kafka:9092
+    protocol: kafka
+    description: Staging сервер
+  production:
+    url: kafka://kafka:9092
+    protocol: kafka
+    description: Production сервер
+
+defaultContentType: application/json
+
+channels:
+  telemetry.temperature:
+    description: Канал для передачи данных о температуре
+    publish:
+      summary: Публикация данных о температуре
+      operationId: publishTemperature
+      message:
+        $ref: '#/components/messages/TemperatureReading'
+
+  telemetry.device-status:
+    description: Канал для передачи данных о статусе устройств
+    publish:
+      summary: Публикация данных о статусе устройства
+      operationId: publishDeviceStatus
+      message:
+        $ref: '#/components/messages/DeviceStatusUpdate'
+
+  heating.commands:
+    description: Канал для команд управления отоплением
+    publish:
+      summary: Публикация команд управления отоплением
+      operationId: publishHeatingCommand
+      message:
+        $ref: '#/components/messages/HeatingCommand'
+
+  heating.events:
+    description: Канал для событий системы отопления
+    publish:
+      summary: Публикация событий системы отопления
+      operationId: publishHeatingEvent
+      message:
+        $ref: '#/components/messages/HeatingEvent'
+    subscribe:
+      summary: Подписка на события системы отопления
+      operationId: subscribeToHeatingEvents
+      message:
+        $ref: '#/components/messages/HeatingEvent'
+
+  users.events:
+    description: Канал для событий, связанных с пользователями
+    publish:
+      summary: Публикация событий пользователей
+      operationId: publishUserEvent
+      message:
+        $ref: '#/components/messages/UserEvent'
+    subscribe:
+      summary: Подписка на события пользователей
+      operationId: subscribeToUserEvents
+      message:
+        $ref: '#/components/messages/UserEvent'
+
+  notifications:
+    description: Канал для отправки уведомлений
+    publish:
+      summary: Публикация уведомлений
+      operationId: publishNotification
+      message:
+        $ref: '#/components/messages/Notification'
+
+components:
+  messages:
+    TemperatureReading:
+      name: temperature-reading
+      title: Данные о температуре
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/TemperatureReading'
+
+    DeviceStatusUpdate:
+      name: device-status-update
+      title: Обновление статуса устройства
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/DeviceStatusUpdate'
+
+    HeatingCommand:
+      name: heating-command
+      title: Команда управления отоплением
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/HeatingCommand'
+
+    HeatingEvent:
+      name: heating-event
+      title: Событие системы отопления
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/HeatingEvent'
+
+    UserEvent:
+      name: user-event
+      title: Событие пользователя
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/UserEvent'
+
+    Notification:
+      name: notification
+      title: Уведомление
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/Notification'
+
+  schemas:
+    TemperatureReading:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          description: Уникальный идентификатор устройства
+        location:
+          type: string
+          description: Местоположение устройства
+        temperature:
+          type: number
+          format: float
+          description: Значение температуры
+        humidity:
+          type: number
+          format: float
+          nullable: true
+          description: Значение влажности (если доступно)
+        timestamp:
+          type: string
+          format: date-time
+          description: Время измерения
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Дополнительные метаданные
+      required:
+        - deviceId
+        - temperature
+        - timestamp
+
+    DeviceStatusUpdate:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          description: Уникальный идентификатор устройства
+        deviceType:
+          type: string
+          enum: [heater, sensor, light, security]
+          description: Тип устройства
+        status:
+          type: string
+          enum: [online, offline, error]
+          description: Статус устройства
+        timestamp:
+          type: string
+          format: date-time
+          description: Время обновления статуса
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Дополнительные метаданные
+      required:
+        - deviceId
+        - deviceType
+        - status
+        - timestamp
+
+    HeatingCommand:
+      type: object
+      properties:
+        commandId:
+          type: string
+          description: Уникальный идентификатор команды
+        deviceId:
+          type: string
+          description: Уникальный идентификатор устройства
+        action:
+          type: string
+          enum: [on, off, set_temperature, schedule]
+          description: Действие
+        parameters:
+          type: object
+          properties:
+            temperature:
+              type: number
+              format: float
+              description: Целевая температура
+            scheduleId:
+              type: string
+              description: ID расписания
+          description: Параметры команды
+        userId:
+          type: string
+          description: ID пользователя, отправившего команду
+        timestamp:
+          type: string
+          format: date-time
+          description: Время отправки команды
+      required:
+        - commandId
+        - deviceId
+        - action
+        - userId
+        - timestamp
+
+    HeatingEvent:
+      type: object
+      properties:
+        eventId:
+          type: string
+          description: Уникальный идентификатор события
+        deviceId:
+          type: string
+          description: Уникальный идентификатор устройства
+        eventType:
+          type: string
+          enum: [status_changed, temperature_changed, schedule_activated, schedule_deactivated, command_executed, command_failed]
+          description: Тип события
+        data:
+          type: object
+          additionalProperties: true
+          description: Данные события
+        timestamp:
+          type: string
+          format: date-time
+          description: Время события
+      required:
+        - eventId
+        - deviceId
+        - eventType
+        - timestamp
+
+    UserEvent:
+      type: object
+      properties:
+        eventId:
+          type: string
+          description: Уникальный идентификатор события
+        userId:
+          type: string
+          description: Уникальный идентификатор пользователя
+        eventType:
+          type: string
+          enum: [registered, updated, deleted, login_success, login_failed, password_changed, role_changed]
+          description: Тип события
+        data:
+          type: object
+          additionalProperties: true
+          description: Данные события
+        timestamp:
+          type: string
+          format: date-time
+          description: Время события
+      required:
+        - eventId
+        - userId
+        - eventType
+        - timestamp
+
+    Notification:
+      type: object
+      properties:
+        notificationId:
+          type: string
+          description: Уникальный идентификатор уведомления
+        userId:
+          type: string
+          description: Уникальный идентификатор пользователя
+        type:
+          type: string
+          enum: [info, warning, alert, system]
+          description: Тип уведомления
+        title:
+          type: string
+          description: Заголовок уведомления
+        message:
+          type: string
+          description: Текст уведомления
+        sourceType:
+          type: string
+          enum: [device, system, schedule, user]
+          description: Источник уведомления
+        sourceId:
+          type: string
+          description: ID источника уведомления
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Дополнительные метаданные
+        timestamp:
+          type: string
+          format: date-time
+          description: Время создания уведомления
+      required:
+        - notificationId
+        - userId
+        - type
+        - message
+        - timestamp 

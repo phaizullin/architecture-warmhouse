@@ -1,0 +1,780 @@
+openapi: 3.0.3
+info:
+  title: User Service API
+  description: API для управления пользователями в системе "Умный дом"
+  version: 1.0.0
+  contact:
+    name: Smart Home Team
+    email: support@smarthouse.ru
+
+servers:
+  - url: https://api.smarthouse.ru/users
+    description: Production API server
+  - url: https://staging-api.smarthouse.ru/users
+    description: Staging API server
+
+tags:
+  - name: authentication
+    description: Операции аутентификации
+  - name: users
+    description: Операции с пользователями
+  - name: permissions
+    description: Операции с правами доступа
+
+paths:
+  /auth/login:
+    post:
+      summary: Аутентификация пользователя
+      tags:
+        - authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/register:
+    post:
+      summary: Регистрация нового пользователя
+      tags:
+        - authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Пользователь успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Пользователь с таким email уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      summary: Обновление токена доступа
+      tags:
+        - authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Токен успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      summary: Выход из системы
+      tags:
+        - authentication
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Успешный выход
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users:
+    get:
+      summary: Получение списка пользователей
+      tags:
+        - users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+          description: Максимальное количество пользователей
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Смещение для пагинации
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                required:
+                  - users
+                  - pagination
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /users/me:
+    get:
+      summary: Получение информации о текущем пользователе
+      tags:
+        - users
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      summary: Обновление информации о текущем пользователе
+      tags:
+        - users
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Пользователь успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/{userId}:
+    get:
+      summary: Получение информации о пользователе по ID
+      tags:
+        - users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID пользователя
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Обновление информации о пользователе
+      tags:
+        - users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Пользователь успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Удаление пользователя
+      tags:
+        - users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID пользователя
+      responses:
+        '204':
+          description: Пользователь успешно удален
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/{userId}/roles:
+    get:
+      summary: Получение ролей пользователя
+      tags:
+        - permissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID пользователя
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Добавление роли пользователю
+      tags:
+        - permissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignRoleRequest'
+      responses:
+        '200':
+          description: Роль успешно добавлена
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Удаление роли у пользователя
+      tags:
+        - permissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveRoleRequest'
+      responses:
+        '200':
+          description: Роль успешно удалена
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /permissions/check:
+    post:
+      summary: Проверка прав доступа
+      tags:
+        - permissions
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckPermissionRequest'
+      responses:
+        '200':
+          description: Успешная проверка
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionCheckResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /roles:
+    get:
+      summary: Получение списка всех ролей
+      tags:
+        - permissions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Создание новой роли
+      tags:
+        - permissions
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoleRequest'
+      responses:
+        '201':
+          description: Роль успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Роль с таким именем уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Неверный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Необходима аутентификация
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Доступ запрещен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email пользователя
+        password:
+          type: string
+          format: password
+          description: Пароль пользователя
+      required:
+        - email
+        - password
+
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email пользователя
+        password:
+          type: string
+          format: password
+          description: Пароль пользователя
+        firstName:
+          type: string
+          description: Имя пользователя
+        lastName:
+          type: string
+          description: Фамилия пользователя
+        phone:
+          type: string
+          description: Телефон пользователя
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh токен
+      required:
+        - refreshToken
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT токен доступа
+        refreshToken:
+          type: string
+          description: Токен для обновления
+        expiresIn:
+          type: integer
+          description: Время жизни токена доступа в секундах
+        tokenType:
+          type: string
+          default: "Bearer"
+          description: Тип токена
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+        - accessToken
+        - refreshToken
+        - expiresIn
+        - tokenType
+        - user
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Уникальный идентификатор пользователя
+        email:
+          type: string
+          format: email
+          description: Email пользователя
+        firstName:
+          type: string
+          description: Имя пользователя
+        lastName:
+          type: string
+          description: Фамилия пользователя
+        phone:
+          type: string
+          description: Телефон пользователя
+        roles:
+          type: array
+          items:
+            type: string
+          description: Список названий ролей пользователя
+        isActive:
+          type: boolean
+          description: Активен ли пользователь
+        createdAt:
+          type: string
+          format: date-time
+          description: Дата создания
+        updatedAt:
+          type: string
+          format: date-time
+          description: Дата обновления
+      required:
+        - id
+        - email
+        - firstName
+        - lastName
+        - roles
+        - isActive
+        - createdAt
+        - updatedAt
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          description: Имя пользователя
+        lastName:
+          type: string
+          description: Фамилия пользователя
+        phone:
+          type: string
+          description: Телефон пользователя
+        password:
+          type: string
+          format: password
+          description: Новый пароль пользователя
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Уникальный идентификатор роли
+        name:
+          type: string
+          description: Название роли
+        description:
+          type: string
+          description: Описание роли
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+          description: Список разрешений
+        createdAt:
+          type: string
+          format: date-time
+          description: Дата создания
+        updatedAt:
+          type: string
+          format: date-time
+          description: Дата обновления
+      required:
+        - id
+        - name
+        - permissions
+        - createdAt
+        - updatedAt
+
+    Permission:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Уникальный идентификатор разрешения
+        resource:
+          type: string
+          description: Ресурс, к которому относится разрешение
+        action:
+          type: string
+          enum: [create, read, update, delete, manage]
+          description: Действие
+        description:
+          type: string
+          description: Описание разрешения
+      required:
+        - id
+        - resource
+        - action
+
+    AssignRoleRequest:
+      type: object
+      properties:
+        roleId:
+          type: string
+          description: ID роли для назначения
+      required:
+        - roleId
+
+    RemoveRoleRequest:
+      type: object
+      properties:
+        roleId:
+          type: string
+          description: ID роли для удаления
+      required:
+        - roleId
+
+    CreateRoleRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Название роли
+        description:
+          type: string
+          description: Описание роли
+        permissions:
+          type: array
+          items:
+            type: string
+          description: Список ID разрешений
+      required:
+        - name
+        - permissions
+
+    CheckPermissionRequest:
+      type: object
+      properties:
+        resource:
+          type: string
+          description: Ресурс для проверки
+        action:
+          type: string
+          enum: [create, read, update, delete, manage]
+          description: Действие для проверки
+        resourceId:
+          type: string
+          description: ID конкретного ресурса (опционально)
+      required:
+        - resource
+        - action
+
+    PermissionCheckResult:
+      type: object
+      properties:
+        allowed:
+          type: boolean
+          description: Разрешено ли действие
+      required:
+        - allowed
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Общее количество записей
+        limit:
+          type: integer
+          description: Максимальное количество записей на странице
+        offset:
+          type: integer
+          description: Текущее смещение
+        hasMore:
+          type: boolean
+          description: Есть ли еще записи
+      required:
+        - total
+        - limit
+        - offset
+        - hasMore
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Код ошибки
+        message:
+          type: string
+          description: Описание ошибки
+        details:
+          type: object
+          description: Дополнительная информация об ошибке
+      required:
+        - code
+        - message 

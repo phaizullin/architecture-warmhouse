@@ -1,0 +1,43 @@
+@startuml "Telemetry Service Components"
+
+!include ../C4-lib/C4_Component.puml
+
+scale max 1200 width
+skinparam dpi 100
+
+title "Диаграмма компонентов микросервиса 'Сервис телеметрии'"
+
+Container_Boundary(telemetry_service, "Сервис телеметрии") {
+    Component(api_component, "API компонент", "REST", "Предоставляет API для доступа к телеметрии")
+    Component(collector, "Коллектор данных", "Go", "Собирает данные с устройств")
+    Component(processor, "Обработчик данных", "Go", "Обрабатывает и агрегирует данные телеметрии")
+    Component(storage_manager, "Менеджер хранения", "Go", "Управляет хранением данных")
+    Component(device_listener, "Слушатель устройств", "MQTT", "Получает данные с устройств через MQTT")
+    Component(event_processor, "Обработчик событий", "Kafka", "Обрабатывает события от других сервисов")
+    Component(event_producer, "Генератор событий", "Kafka", "Публикует события на основе телеметрии")
+}
+
+Container_Ext(api_gateway, "API Gateway", "Nginx, Kong", "Маршрутизация запросов")
+Container_Ext(analytics_service, "Сервис аналитики", "Python", "Анализ данных телеметрии")
+Container_Ext(notification_service, "Сервис уведомлений", "Node.js", "Отправка уведомлений")
+Container_Ext(heating_service, "Сервис отопления", "Go", "Отправляет данные телеметрии")
+Container_Ext(message_broker, "Брокер сообщений", "Kafka", "Обмен сообщениями")
+System_Ext(smart_devices, "Умные устройства", "Датчики и устройства умного дома")
+ContainerDb_Ext(telemetry_db, "База телеметрии", "TimescaleDB", "Хранение данных телеметрии")
+
+Rel(api_gateway, api_component, "Перенаправляет запросы", "REST")
+Rel(smart_devices, device_listener, "Отправляет данные", "MQTT")
+Rel(message_broker, event_processor, "Доставляет события", "Kafka")
+Rel(event_producer, message_broker, "Публикует события", "Kafka")
+Rel(storage_manager, telemetry_db, "Сохраняет данные", "SQL")
+Rel_R(analytics_service, api_component, "Запрашивает данные", "REST")
+Rel(heating_service, event_processor, "Отправляет данные телеметрии", "Kafka")
+
+Rel(device_listener, collector, "Передает данные", "Внутренний")
+Rel(collector, processor, "Передает данные для обработки", "Внутренний")
+Rel(processor, storage_manager, "Передает данные для хранения", "Внутренний")
+Rel(processor, event_producer, "Генерирует события", "Внутренний")
+Rel(api_component, storage_manager, "Запрашивает данные", "Внутренний")
+Rel(event_processor, processor, "Передает события для обработки", "Внутренний")
+
+@enduml 

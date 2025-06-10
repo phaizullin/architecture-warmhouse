@@ -58,7 +58,7 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - TEMPERATURE_API_URL=${TEMPERATURE_API_URL}
     ports:
-      - "${PORT}:8080"
+      - "8080:8080"
     restart: unless-stopped
     networks:
       - smarthome-network

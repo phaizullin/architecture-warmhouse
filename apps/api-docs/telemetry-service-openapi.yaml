@@ -1,0 +1,566 @@
+openapi: 3.0.3
+info:
+  title: Telemetry Service API
+  description: API для работы с телеметрией в системе "Умный дом"
+  version: 1.0.0
+  contact:
+    name: Smart Home Team
+    email: support@smarthouse.ru
+
+servers:
+  - url: https://api.smarthouse.ru/telemetry
+    description: Production API server
+  - url: https://staging-api.smarthouse.ru/telemetry
+    description: Staging API server
+
+tags:
+  - name: temperature
+    description: Операции с данными о температуре
+  - name: history
+    description: Операции с историческими данными
+  - name: analytics
+    description: Операции с аналитикой данных
+
+paths:
+  /temperature/current:
+    get:
+      summary: Получение текущей температуры во всех помещениях
+      tags:
+        - temperature
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TemperatureReading'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /temperature/current/{location}:
+    get:
+      summary: Получение текущей температуры в конкретном помещении
+      tags:
+        - temperature
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: location
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Название помещения
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemperatureReading'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /temperature/history:
+    get:
+      summary: Получение исторических данных о температуре
+      tags:
+        - history
+        - temperature
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: location
+          in: query
+          schema:
+            type: string
+          description: Фильтр по помещению
+        - name: deviceId
+          in: query
+          schema:
+            type: string
+          description: Фильтр по ID устройства
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Начальная дата и время (ISO 8601)
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Конечная дата и время (ISO 8601)
+        - name: interval
+          in: query
+          schema:
+            type: string
+            enum: [raw, minute, hour, day, week, month]
+            default: raw
+          description: Интервал агрегации данных
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TemperatureHistoryPoint'
+                  metadata:
+                    $ref: '#/components/schemas/HistoryMetadata'
+                required:
+                  - data
+                  - metadata
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /temperature/stats:
+    get:
+      summary: Получение статистики по температуре
+      tags:
+        - analytics
+        - temperature
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: location
+          in: query
+          schema:
+            type: string
+          description: Фильтр по помещению
+        - name: deviceId
+          in: query
+          schema:
+            type: string
+          description: Фильтр по ID устройства
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Начальная дата и время (ISO 8601)
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Конечная дата и время (ISO 8601)
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemperatureStats'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /events:
+    get:
+      summary: Получение событий телеметрии
+      tags:
+        - history
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deviceId
+          in: query
+          schema:
+            type: string
+          description: Фильтр по ID устройства
+        - name: eventType
+          in: query
+          schema:
+            type: string
+          description: Фильтр по типу события
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Начальная дата и время (ISO 8601)
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Конечная дата и время (ISO 8601)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+          description: Максимальное количество событий
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Смещение для пагинации
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TelemetryEvent'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                required:
+                  - events
+                  - pagination
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /devices/{deviceId}/telemetry:
+    get:
+      summary: Получение всей телеметрии для конкретного устройства
+      tags:
+        - history
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID устройства
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Начальная дата и время (ISO 8601)
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Конечная дата и время (ISO 8601)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+          description: Максимальное количество записей
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Смещение для пагинации
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  telemetry:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DeviceTelemetry'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                required:
+                  - telemetry
+                  - pagination
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Неверный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Необходима аутентификация
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Доступ запрещен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    TemperatureReading:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          description: ID устройства-датчика
+        location:
+          type: string
+          description: Название помещения
+        temperature:
+          type: number
+          format: float
+          description: Текущая температура
+        humidity:
+          type: number
+          format: float
+          nullable: true
+          description: Текущая влажность (если датчик поддерживает)
+        timestamp:
+          type: string
+          format: date-time
+          description: Время измерения
+      required:
+        - deviceId
+        - location
+        - temperature
+        - timestamp
+
+    TemperatureHistoryPoint:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          description: ID устройства-датчика
+        location:
+          type: string
+          description: Название помещения
+        temperature:
+          type: number
+          format: float
+          description: Значение температуры
+        humidity:
+          type: number
+          format: float
+          nullable: true
+          description: Значение влажности (если доступно)
+        timestamp:
+          type: string
+          format: date-time
+          description: Время измерения
+      required:
+        - deviceId
+        - location
+        - temperature
+        - timestamp
+
+    HistoryMetadata:
+      type: object
+      properties:
+        interval:
+          type: string
+          enum: [raw, minute, hour, day, week, month]
+          description: Интервал агрегации данных
+        totalPoints:
+          type: integer
+          description: Общее количество точек данных
+        from:
+          type: string
+          format: date-time
+          description: Начальная дата и время
+        to:
+          type: string
+          format: date-time
+          description: Конечная дата и время
+      required:
+        - interval
+        - totalPoints
+        - from
+        - to
+
+    TemperatureStats:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          nullable: true
+          description: ID устройства-датчика (если указан в запросе)
+        location:
+          type: string
+          nullable: true
+          description: Название помещения (если указано в запросе)
+        min:
+          type: number
+          format: float
+          description: Минимальная температура за период
+        max:
+          type: number
+          format: float
+          description: Максимальная температура за период
+        avg:
+          type: number
+          format: float
+          description: Средняя температура за период
+        median:
+          type: number
+          format: float
+          description: Медианная температура за период
+        stdDev:
+          type: number
+          format: float
+          description: Стандартное отклонение
+        from:
+          type: string
+          format: date-time
+          description: Начальная дата и время
+        to:
+          type: string
+          format: date-time
+          description: Конечная дата и время
+      required:
+        - min
+        - max
+        - avg
+        - from
+        - to
+
+    TelemetryEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Уникальный идентификатор события
+        deviceId:
+          type: string
+          description: ID устройства
+        eventType:
+          type: string
+          description: Тип события
+        timestamp:
+          type: string
+          format: date-time
+          description: Время события
+        payload:
+          type: object
+          description: Данные события (зависят от типа)
+      required:
+        - id
+        - deviceId
+        - eventType
+        - timestamp
+        - payload
+
+    DeviceTelemetry:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          description: ID устройства
+        timestamp:
+          type: string
+          format: date-time
+          description: Время измерения
+        metrics:
+          type: object
+          additionalProperties:
+            type: object
+          description: Метрики устройства (название -> значение)
+      required:
+        - deviceId
+        - timestamp
+        - metrics
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Общее количество записей
+        limit:
+          type: integer
+          description: Максимальное количество записей на странице
+        offset:
+          type: integer
+          description: Текущее смещение
+        hasMore:
+          type: boolean
+          description: Есть ли еще записи
+      required:
+        - total
+        - limit
+        - offset
+        - hasMore
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Код ошибки
+        message:
+          type: string
+          description: Описание ошибки
+        details:
+          type: object
+          description: Дополнительная информация об ошибке
+      required:
+        - code
+        - message 

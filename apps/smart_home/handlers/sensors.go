@@ -50,6 +50,11 @@ func (h *SensorHandler) GetSensors(c *gin.Context) {
 		return
 	}
 
+	if sensors == nil {
+		c.JSON(http.StatusOK, []models.Sensor{})
+		return
+	}
+
 	// Update temperature sensors with real-time data from the external API
 	for i, sensor := range sensors {
 		if sensor.Type == models.Temperature {

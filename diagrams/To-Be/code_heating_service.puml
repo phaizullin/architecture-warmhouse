@@ -1,0 +1,156 @@
+@startuml "Heating Service Code"
+
+!include ../C4-lib/C4.puml
+
+scale max 1200 width
+skinparam dpi 100
+title "Диаграмма кода микросервиса 'Сервис отопления'"
+
+package "api" {
+    class "HeatingAPI" {
+        +GetStatus()
+        +SetTemperature()
+        +ToggleHeating()
+        +SetSchedule()
+    }
+    
+    class "gRPCServer" {
+        +Start()
+        -registerServices()
+    }
+    
+    class "RESTServer" {
+        +Start()
+        -setupRoutes()
+    }
+}
+
+package "service" {
+    class "HeatingService" {
+        -stateManager
+        -scheduler
+        -deviceClient
+        -eventPublisher
+        +GetDeviceStatus()
+        +SetTargetTemperature()
+        +ToggleHeating()
+        +SetHeatingSchedule()
+    }
+    
+    class "HeatingScheduler" {
+        -schedule
+        -timer
+        +AddScheduleEntry()
+        +RemoveScheduleEntry()
+        +GetSchedule()
+        +StartScheduler()
+        +StopScheduler()
+    }
+    
+    class "StateManager" {
+        -deviceStates
+        -deviceClient
+        +GetCurrentState()
+        +UpdateState()
+        +SyncState()
+    }
+}
+
+package "device" {
+    class "DeviceClient" {
+        -mqttClient
+        +SendCommand()
+        +GetStatus()
+    }
+    
+    class "MQTTClient" {
+        -connection
+        +Connect()
+        +Disconnect()
+        +Publish()
+        +Subscribe()
+    }
+}
+
+package "models" {
+    class "HeatingDevice" {
+        +ID
+        +Name
+        +Type
+        +Status
+        +CurrentTemperature
+        +TargetTemperature
+    }
+    
+    class "Schedule" {
+        +DeviceID
+        +Entries []ScheduleEntry
+    }
+    
+    class "ScheduleEntry" {
+        +ID
+        +DayOfWeek
+        +StartTime
+        +EndTime
+        +TargetTemperature
+        +Enabled
+    }
+}
+
+package "events" {
+    class "EventPublisher" {
+        -kafkaProducer
+        +PublishStateChange()
+        +PublishScheduleChange()
+        +PublishTelemetryData()
+    }
+    
+    class "EventConsumer" {
+        -kafkaConsumer
+        -messageHandler
+        +StartConsuming()
+        +StopConsuming()
+    }
+}
+
+package "clients" {
+    class "UserServiceClient" {
+        +CheckPermission()
+        +ValidateToken()
+    }
+    
+    class "DeviceRegistryClient" {
+        +GetDeviceInfo()
+        +GetUserDevices()
+    }
+    
+    class "TelemetryClient" {
+        +SendTelemetryData()
+    }
+}
+
+' Связи между классами
+HeatingAPI --> HeatingService : использует
+HeatingAPI --> UserServiceClient : проверяет права
+gRPCServer --> HeatingAPI : регистрирует
+RESTServer --> HeatingAPI : регистрирует
+
+HeatingService --> StateManager : управляет
+HeatingService --> HeatingScheduler : использует
+HeatingService --> EventPublisher : публикует события
+HeatingService --> DeviceRegistryClient : получает информацию
+
+StateManager --> DeviceClient : отправляет команды
+HeatingScheduler --> StateManager : вызывает
+
+DeviceClient --> MQTTClient : использует
+DeviceClient --> HeatingDevice : оперирует
+
+HeatingService --> HeatingDevice : оперирует
+HeatingService --> Schedule : оперирует
+Schedule *-- ScheduleEntry : содержит
+
+EventPublisher --> TelemetryClient : отправляет телеметрию
+EventConsumer ..> HeatingService : передает события
+
+@enduml 

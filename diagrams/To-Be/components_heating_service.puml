@@ -1,0 +1,41 @@
+@startuml "Heating Service Components"
+
+!include ../C4-lib/C4_Component.puml
+
+scale max 1200 width
+skinparam dpi 100
+
+title "Диаграмма компонентов микросервиса 'Сервис отопления'"
+
+Container_Boundary(heating_service, "Сервис отопления") {
+    Component(api_component, "API компонент", "gRPC, REST", "Предоставляет API для управления отоплением")
+    Component(controller, "Контроллер", "Go", "Обрабатывает команды управления отоплением")
+    Component(state_manager, "Менеджер состояния", "Go", "Управляет текущим состоянием отопительных устройств")
+    Component(scheduler, "Планировщик", "Go", "Управляет расписанием работы отопления")
+    Component(device_comm, "Коммуникатор устройств", "MQTT", "Взаимодействует с устройствами отопления")
+    Component(events, "Менеджер событий", "Kafka", "Обрабатывает и публикует события")
+}
+
+Container_Ext(api_gateway, "API Gateway", "Nginx, Kong", "Маршрутизация запросов")
+Container_Ext(user_service, "Сервис пользователей", "Go", "Аутентификация и авторизация")
+Container_Ext(device_service, "Сервис управления устройствами", "Go", "Управление устройствами")
+Container_Ext(telemetry_service, "Сервис телеметрии", "Go", "Сбор и обработка телеметрии")
+Container_Ext(message_broker, "Брокер сообщений", "Kafka", "Обмен сообщениями")
+System_Ext(heating_device, "Устройство отопления", "Умное реле отопления")
+
+Rel(api_gateway, api_component, "Перенаправляет запросы", "gRPC/REST")
+Rel(api_component, user_service, "Проверяет права доступа", "gRPC")
+Rel(controller, device_service, "Получает информацию об устройствах", "gRPC")
+Rel(device_comm, heating_device, "Отправляет команды", "MQTT")
+Rel(events, message_broker, "Публикует/получает события", "Kafka")
+Rel(events, telemetry_service, "Отправляет данные телеметрии", "Kafka")
+
+Rel(api_component, controller, "Вызывает", "Внутренний")
+Rel(controller, state_manager, "Управляет", "Внутренний")
+Rel(controller, scheduler, "Настраивает", "Внутренний")
+Rel(scheduler, state_manager, "Вызывает изменение состояния", "Внутренний")
+Rel(state_manager, device_comm, "Отправляет команды", "Внутренний")
+Rel(state_manager, events, "Публикует события", "Внутренний")
+Rel(controller, events, "Подписывается на события", "Внутренний")
+
+@enduml 
